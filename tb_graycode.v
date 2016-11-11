@@ -21,7 +21,7 @@
 // Additional Comments:
 // 
 ////////////////////////////////////////////////////////////////////////////////
-
+`define DEF_BIT_NUM 32
 module tb_graycode;
 
 	// Inputs
@@ -30,48 +30,43 @@ module tb_graycode;
         reg tb_r_set    = 1'b0;   
         reg tb_r_ce     = 1'b0;   
         reg tb_r_inc_n  = 1'b0; 
-        reg tb_r_ld_val = 32'd0; 
-        wire [31:0] tb_w_bin_cnt;
-        wire [31:0] tb_w_gray_cnt;
+        reg  [`DEF_BIT_NUM-1:0]tb_r_ld_val = `DEF_BIT_NUM'd0; 
+        wire [`DEF_BIT_NUM-1:0] tb_w_bin_cnt;
         wire tb_w_eqnz;
-
-
-
-
+        wire [`DEF_BIT_NUM-1:0] tb_w_bin_result;
+        wire [`DEF_BIT_NUM-1:0] tb_w_gray_cnt;
 
 	// Outputs
-	wire [31:0] rt_o_gray;
 
-	// Instantiate the Unit Under Test (UUT)
-	rt_bin2gray uut (
-		.rt_i_bin(tb_w_bin_cnt), 
-		.rt_o_gray(tb_w_gray_cnt)
-	);
+        wire tb_w_result_cmp;
+        assign tb_w_result_cmp = (tb_w_bin_result == tb_w_bin_cnt);
 
 	initial begin
 		// Initialize Inputs
-		rt_i_bin = 0;
 
 		// Wait 100 ns for global reset to finish
 		#100;
         
 		// Add stimulus here
-                @(posedge tb_r_clk);
-                tb_r_rst    = 1'b0;  
-                tb_r_set    = 1'b0;  
-                tb_r_ce     = 1'b1;  
-                tb_r_inc_n  = 1'b0; 
-                tb_r_ld_val = 32'd0; 
+                @(posedge tb_r_clk);            tb_r_ce     = 1'b1;  
+                repeat(20) @(posedge tb_r_clk); tb_r_ce     = 1'b0; 
 
-                repeat(20) @(posedge tb_r_clk);
-                tb_r_rst    = 1'b0;  
-                tb_r_set    = 1'b0;  
-                tb_r_ce     = 1'b0;  
-                tb_r_inc_n  = 1'b0; 
-                tb_r_ld_val = 32'd0; 
+                @(posedge tb_r_clk);            tb_r_rst = 1'b1;
+                @(posedge tb_r_clk);            tb_r_rst = 1'b0;
 
 
+                @(posedge tb_r_clk); tb_r_ce  = 1'b1;  
+                @(posedge tb_r_clk); tb_r_set = 1'b1; tb_r_ld_val = `DEF_BIT_NUM'd3;
+                @(posedge tb_r_clk); tb_r_set = 1'b0;
+                repeat(20) @(posedge tb_r_clk); tb_r_ce     = 1'b0; 
 
+                @(posedge tb_r_clk);            tb_r_rst = 1'b1;
+                @(posedge tb_r_clk);            tb_r_rst = 1'b0;
+                tb_r_inc_n = 1'b1;
+
+
+                @(posedge tb_r_clk); tb_r_ce  = 1'b1;  
+                repeat(20) @(posedge tb_r_clk); tb_r_ce     = 1'b0; 
 	end
 
         initial begin
@@ -79,17 +74,33 @@ module tb_graycode;
           forever #5 tb_r_clk = ~tb_r_clk;
         end
 
-        rt_bin_cnt u0_bin_cnt (
-          .rt_i_clk     (tb_r_clk       ), 
-          .rt_i_rst     (tb_r_rst       ), //sync rst
-          .rt_i_set     (tb_r_set       ), 
+        // Instantiate the Unit Under Test (UUT)
+        rt_bin_cnt #(
+          .PARAM_BIT_NUM(`DEF_BIT_NUM)
+        )u0_bin_cnt (
+          .rt_i_clk     (tb_r_clk      ), 
+          .rt_i_rst     (tb_r_rst      ), //sync rst
+          .rt_i_set     (tb_r_set      ), 
           .rt_i_ce      (tb_r_ce       ), 
-          .rt_i_inc_n   (tb_r_inc_n       ), //0:increase mode, 1:decrease mode 
-          .rt_i_ld_val  (tb_r_ld_val       ), 
-          .rt_o_bin_cnt (tb_w_bin_cnt       ), 
-          .rt_o_eqnz    (tb_w_eqnz       )
+          .rt_i_inc_n   (tb_r_inc_n    ), //0:increase mode, 1:decrease mode 
+          .rt_i_ld_val  (tb_r_ld_val   ), 
+          .rt_o_bin_cnt (tb_w_bin_cnt  ), 
+          .rt_o_eqnz    (tb_w_eqnz     )
           );
 
+	rt_bin2gray #(
+	  .PARAM_BIT_NUM(`DEF_BIT_NUM)
+        )uut (
+          .rt_i_bin (tb_w_bin_cnt), 
+          .rt_o_gray(tb_w_gray_cnt)
+	);
+
+        rt_gray2bin #(
+	  .PARAM_BIT_NUM(`DEF_BIT_NUM)
+        )u1_gray2bin (
+          .rt_i_gray(tb_w_gray_cnt), 
+          .rt_o_bin(tb_w_bin_result)
+        );
 
 endmodule
 
